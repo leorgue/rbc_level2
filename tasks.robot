@@ -12,40 +12,49 @@ Library             RPA.Tables
 Library             RPA.Archive
 Library             RPA.RobotLogListener
 Library             RPA.Robocorp.Vault
+Library             Screenshot
+Library             Dialogs
+Library             OperatingSystem
+Library             Collections
+
 
 *** Variables ***
-${web}    https://robotsparebinindustries.com/#/robot-order
-${csv_web}    https://robotsparebinindustries.com/orders.csv  
-${receipt_dir}    ${OUTPUT_DIR}${/}receipts/
-${sshot_dir}    ${OUTPUT_DIR}${/}screenshot/
-${zip_dir}    ${OUTPUT_DIR}${/}
+${receipt_dir}      ${OUTPUT_DIR}${/}receipts/
+${sshot_dir}        ${OUTPUT_DIR}${/}screenshot/
+${zip_dir}          ${OUTPUT_DIR}${/}
+
 
 *** Tasks ***
 Order robots from RobotSpareBin Industries Inc
     Open the robot order website
     ${orders}=    Get orders
     FOR    ${row}    IN    @{orders}
-       Close the annoying modal
-       Fill the form    ${row}
-       Wait Until Keyword Succeeds     10x     2s    Preview the robot
-       Wait Until Keyword Succeeds     10x     2s    Submit the order
-    #    ${pdf}=    Store the receipt as a PDF file    ${row}[Order number]
-    #    ${screenshot}=    Take a screenshot of the robot    ${row}[Order number]
-    #    Embed the robot screenshot to the receipt PDF file    ${screenshot}    ${pdf}
-       Go to order another robot
+        Close the annoying modal
+        Fill the form    ${row}
+        Wait Until Keyword Succeeds    10x    2s    Preview the robot
+        Wait Until Keyword Succeeds    10x    2s    Submit the order
+        ${pdf}=    Store the receipt as a PDF file    ${row}[Order number]
+        ${screenshot}=    Take a screenshot of the robot    ${row}[Order number]
+        Embed the robot screenshot to the receipt PDF file    ${screenshot}    ${pdf}
+        Go to order another robot
     END
-    # Create a ZIP file of the receipts
+    Create a ZIP file of the receipts
+    Delete screenshots and receipts
     Log out and close the browser
+
+# there exist comments from previous level for reference
 
 
 *** Keywords ***
 Open the robot order website
-    Open Available Browser    ${web}
+    ${secret}=    Get Secret    url
+    Open Available Browser    ${secret}[web]
 
 Get orders
-    Download    ${csv_web}    overwrite=True
-    ${tab}=     Read table from CSV    orders.csv
-    [Return]    ${tab}
+    ${secret}=    Get Secret    url
+    Download    ${secret}[csv]    overwrite=True
+    ${tab}=    Read table from CSV    orders.csv
+    RETURN    ${tab}
 
 Close the annoying modal
     Click Button    OK
@@ -65,28 +74,52 @@ Fill the form
 Preview the robot
     Click Button    preview
     Wait Until Element Is Visible    robot-preview-image
+
 Submit the order
-    Mute Run On Failure    Page Should Contain Element     
+    Mute Run On Failure    Page Should Contain Element
     Click Button    order
     Page Should Contain Element    receipt
-Store the receipt as a PDF file
-    [Arguments]    ${ord_num}
-    
 
-    # Wait Until Element Is Visible    id:sales-results
-    # ${sales_results_html}=    Get Element Attribute    id:sales-results    outerHTML
+Store the receipt as a PDF file
+    [Arguments]    ${order_id}
+    Set Local Variable    ${receipt_filename}    ${receipt_dir}receipt_${order_id}.pdf
+    ${receipt_html}=    Get Element Attribute    id:receipt    outerHTML
+    Html To Pdf    content=${receipt_html}    output_path=${receipt_filename}
+    RETURN    ${receipt_filename}
+
     # Html To Pdf    ${sales_results_html}    ${OUTPUT_DIR}${/}sales_results.pdf
+    # ${sales_results_html}=    Get Element Attribute    id:sales-results    outerHTML
+    # Wait Until Element Is Visible    id:sales-results
 
 Take a screenshot of the robot
-
+    [Arguments]    ${order_id}
+    Set Local Variable    ${sshot_filename}    ${sshot_dir}robot_${order_id}.png
+    Screenshot    id:robot-preview-image    ${sshot_filename}
+    RETURN    ${sshot_filename}
 
 Embed the robot screenshot to the receipt PDF file
+    [Arguments]    ${sshot}    ${receipt}
+    Open Pdf    ${receipt}
 
+    # Create the list of files that is to be added to the PDF (1 file)
+    @{myfiles}=    Create List    ${sshot}:x=0,y=0
+    Add Files To PDF    ${myfiles}    ${receipt}    ${True}
+    Close PDF    ${receipt}
 
 Go to order another robot
     Wait Until Keyword Succeeds    10x    1s    Click Button When Visible    order-another
-Create a ZIP file of the receipts
 
+Create a ZIP file of the receipts
+    ${name}=    Get Value From User    Give name for ZIP Folder
+    Create the ZIP    ${name}
+
+Create the ZIP
+    [Arguments]    ${name}
+    Archive Folder With Zip    ${receipt_dir}    ${zip_dir}${name}
+
+Delete screenshots and receipts
+    Empty Directory    ${sshot_dir}
+    Empty Directory    ${receipt_dir}
 
 Log out and close the browser
     Close Browser
