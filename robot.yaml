@@ -19,7 +19,7 @@ artifactsDir: output
 PATH:
   - .
 PYTHONPATH:
-  - .
+  - venv
 
 ignoreFiles:
   - .gitignore

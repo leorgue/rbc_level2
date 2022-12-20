@@ -11,11 +11,12 @@ Library             RPA.PDF
 Library             RPA.Tables
 Library             RPA.Archive
 Library             RPA.RobotLogListener
-Library             RPA.Robocorp.Vault
+# Library    RPA.Robocorp.Vault
 Library             Screenshot
 Library             Dialogs
 Library             OperatingSystem
 Library             Collections
+Library             RPA.Robocloud.Secrets
 
 
 *** Variables ***
@@ -49,10 +50,12 @@ Order robots from RobotSpareBin Industries Inc
 Open the robot order website
     ${secret}=    Get Secret    url
     Open Available Browser    ${secret}[web]
+    # Open Available Browser    https://robotsparebinindustries.com/#/robot-order
 
 Get orders
     ${secret}=    Get Secret    url
     Download    ${secret}[csv]    overwrite=True
+    # Download    https://robotsparebinindustries.com/orders.csv
     ${tab}=    Read table from CSV    orders.csv
     RETURN    ${tab}
 
@@ -99,12 +102,13 @@ Take a screenshot of the robot
 
 Embed the robot screenshot to the receipt PDF file
     [Arguments]    ${sshot}    ${receipt}
-    Open Pdf    ${receipt}
+    # dont know why dont need to open and close pdf
+    # Open Pdf    ${receipt}
 
     # Create the list of files that is to be added to the PDF (1 file)
     @{myfiles}=    Create List    ${sshot}:x=0,y=0
     Add Files To PDF    ${myfiles}    ${receipt}    ${True}
-    Close PDF    ${receipt}
+    # Close PDF    ${receipt}
 
 Go to order another robot
     Wait Until Keyword Succeeds    10x    1s    Click Button When Visible    order-another
